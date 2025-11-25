@@ -205,7 +205,7 @@ class ParallelBaselinePPO:
 
 
 def train_parallel_baseline(n_workers: int = 200,
-                            total_episodes: int = 100000,
+                            total_episodes: int = 20000,
                             episodes_per_update: int = 200,
                             red_agent_type=B_lineAgent,
                             max_steps: int = 100,
@@ -424,7 +424,7 @@ def main():
     
     parser = argparse.ArgumentParser(description='Parallel Baseline PPO Training (No Workflow)')
     parser.add_argument('--n-workers', type=int, default=200)
-    parser.add_argument('--total-episodes', type=int, default=100000)
+    parser.add_argument('--total-episodes', type=int, default=20000)
     parser.add_argument('--episodes-per-update', type=int, default=200)
     parser.add_argument('--red-agent', type=str, default='B_lineAgent',
                        choices=['B_lineAgent', 'RedMeanderAgent', 'SleepAgent'])

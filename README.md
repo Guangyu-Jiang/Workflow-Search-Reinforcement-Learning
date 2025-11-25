@@ -17,18 +17,31 @@ The key insight is that many sequential tasks have inherent ordering constraints
 Workflow-Search-Reinforcement-Learning/
 ├── CAGE-Challenge-2-Experiment/     # Cybersecurity domain experiments
 │   ├── workflow_rl/                 # Core workflow search implementation
-│   ├── baselines/                   # Baseline algorithms (PPO, SAC, HRL)
-│   ├── train_*.py                   # Training scripts
-│   ├── plot.ipynb                   # Results visualization
+│   │   ├── workflow_search_ppo.py  # Main workflow search script
+│   │   ├── gp_ucb_order_search.py  # GP-UCB search algorithm
+│   │   └── order_based_workflow.py # Workflow representation
+│   ├── baselines/                   # Baseline algorithms
+│   │   ├── train_ppo.py            # PPO baseline
+│   │   ├── train_sac.py            # SAC baseline
+│   │   └── train_hierarchical_rl.py # HRL baseline
+│   ├── Agents/                      # Agent implementations
+│   ├── Wrappers/                    # Environment wrappers
 │   └── README.md                    # CAGE2-specific documentation
 │
-├── Gird-World-Planning-Experiment/  # Gridworld navigation experiments
+├── Grid-World-Planning-Experiment/  # Gridworld navigation experiments
 │   ├── core/                        # Environment implementations
-│   ├── notebooks/                   # Analysis notebooks
-│   ├── train_*.py                   # Training scripts
+│   │   ├── obstacle_maze_env.py    # Main maze environment
+│   │   ├── workflow_alignment_system.py
+│   │   └── ...
+│   ├── workflow_search_ppo.py      # GP-UCB workflow search
+│   ├── train_ppo_maze.py           # PPO baseline
+│   ├── train_sac_maze.py           # SAC baseline
+│   ├── train_hrl_maze.py           # HRL baseline
 │   └── requirements.txt             # Dependencies
 │
-└── README.md                        # This file
+├── README.md                        # This file
+├── requirements.txt                 # Core dependencies
+└── .gitignore                       # Git ignore patterns
 ```
 
 ## 🔬 Experiments
@@ -43,21 +56,22 @@ Workflow-Search-Reinforcement-Learning/
 
 **Key Features**:
 - Order-conditioned PPO with alignment rewards
-- Parallel episode collection (200 workers)
+- Parallel episode collection (50-200 workers)
 - Compliance-based reward shaping
 - Full 145-action space (no reduction)
 
 **Main Scripts**:
 - `workflow_rl/workflow_search_ppo.py` - GP-UCB workflow search with PPO
-- `train_parallel_baseline.py` - Standard PPO baseline
-- `train_parallel_sac.py` - SAC baseline
-- `train_hierarchical_general.py` - Hierarchical RL (Options Framework) baseline
+- `baselines/train_ppo.py` - Standard PPO baseline
+- `baselines/train_sac.py` - SAC baseline
+- `baselines/train_hierarchical_rl.py` - Hierarchical RL (Options Framework) baseline
 
 **Hyperparameters**:
 - **Network Architecture**: 64→64 Tanh MLP (Actor-Critic)
 - **Learning Rate**: 0.002 (Adam optimizer)
 - **PPO**: γ=0.99, K_epochs=6, ε_clip=0.2
 - **GP-UCB**: β=2.0, length_scale=0.5 (RBF kernel)
+- **Default Episodes**: 20,000 per experiment
 
 See [CAGE-Challenge-2-Experiment/README.md](CAGE-Challenge-2-Experiment/README.md) for detailed documentation.
 
@@ -76,12 +90,16 @@ See [CAGE-Challenge-2-Experiment/README.md](CAGE-Challenge-2-Experiment/README.m
 - Comparison with standard RL baselines
 
 **Main Scripts**:
-- `workflow_search_gpucb_maze_fixed.py` - GP-UCB workflow search
-- `train_ppo_baseline_maze_mp.py` - PPO baseline
-- `train_sac_baseline_maze.py` - SAC baseline
-- `train_hrl_baseline_maze.py` - Hierarchical RL baseline
+- `workflow_search_ppo.py` - GP-UCB workflow search
+- `train_ppo_maze.py` - PPO baseline
+- `train_sac_maze.py` - SAC baseline
+- `train_hrl_maze.py` - Hierarchical RL baseline
 
-See [Gird-World-Planning-Experiment/environment_description.md](Gird-World-Planning-Experiment/environment_description.md) for environment details.
+**Hyperparameters**:
+- **Network Architecture**: 128→128 ReLU MLP
+- **Learning Rate**: 3e-4 (Adam optimizer)
+- **PPO**: γ=0.99, K_epochs=4, ε_clip=0.2
+- **Default Episodes**: 20,000 per experiment (800 updates × 25 envs)
 
 ## 🚀 Quick Start
 
@@ -92,10 +110,10 @@ See [Gird-World-Planning-Experiment/environment_description.md](Gird-World-Plann
 pip install torch numpy scipy scikit-learn matplotlib seaborn
 
 # For Gridworld experiments
-pip install gym pygame
+pip install gym pygame stable-baselines3
 
 # For CAGE2 experiments
-# Follow CAGE2 installation instructions
+# Follow CAGE2 installation instructions at CAGE2 repository
 ```
 
 ### Running Experiments
@@ -105,34 +123,56 @@ pip install gym pygame
 ```bash
 cd CAGE-Challenge-2-Experiment
 
-# Run workflow search with GP-UCB
+# Run workflow search with GP-UCB (default: 20,000 episodes)
 python workflow_rl/workflow_search_ppo.py \
-    --total_episodes 100000 \
-    --episodes_per_update 200 \
-    --red_agent B_lineAgent \
-    --gp_length_scale 0.5
+    --red-agent B_lineAgent \
+    --gp-length-scale 0.5
 
-# Run PPO baseline
-python train_parallel_baseline.py \
-    --n_workers 200 \
-    --total_episodes 100000 \
-    --red_agent B_lineAgent
+# Run PPO baseline (default: 20,000 episodes)
+python baselines/train_ppo.py \
+    --n-workers 200 \
+    --red-agent B_lineAgent
+
+# Run SAC baseline (default: 20,000 episodes)
+python baselines/train_sac.py \
+    --n-workers 50 \
+    --red-agent B_lineAgent
+
+# Run HRL baseline (default: 20,000 episodes)
+python baselines/train_hierarchical_rl.py \
+    --n-workers 200 \
+    --red-agent B_lineAgent
 ```
 
 #### Gridworld Experiment
 
 ```bash
-cd Gird-World-Planning-Experiment
+cd Grid-World-Planning-Experiment
 
-# Run workflow search
-python workflow_search_gpucb_maze_fixed.py \
-    --total_episodes 50000 \
-    --gp_beta 2.0
+# Run workflow search (default: ~20,000 episodes)
+python workflow_search_ppo.py \
+    --iterations 20 \
+    --updates-per-workflow 50
 
-# Run PPO baseline
-python train_ppo_baseline_maze_mp.py \
-    --total_episodes 50000
+# Run PPO baseline (default: 20,000 episodes = 800 updates × 25 envs)
+python train_ppo_maze.py \
+    --updates 800 \
+    --num-envs 25
+
+# Run SAC baseline (default: 20,000 episodes)
+python train_sac_maze.py \
+    --n-workers 50
+
+# Run HRL baseline (default: 20,000 episodes = 800 updates × 25 envs)
+python train_hrl_maze.py \
+    --updates 800 \
+    --num-envs 25
 ```
+
+**Note**: All experiments default to 20,000 episodes. You can override this with command-line arguments:
+- CAGE2: `--total-episodes <number>`
+- Gridworld (PPO/HRL): `--updates <number>` (episodes = updates × num-envs)
+- Gridworld (SAC): `--total-episodes <number>`
 
 ## 📊 Key Results
 
@@ -162,7 +202,7 @@ Workflows are represented as permutations of task priorities:
 Uses Gaussian Process Upper Confidence Bound to efficiently explore workflow space:
 - **Kernel**: RBF (Radial Basis Function) with configurable length scale
 - **Distance Metric**: Kendall tau distance for permutation space
-- **Beta**: Controls exploration-exploitation tradeoff (default: 2.0)
+- **Beta/Kappa**: Controls exploration-exploitation tradeoff (default: 2.0-4.0)
 
 ### RL Algorithms
 
@@ -172,16 +212,16 @@ Uses Gaussian Process Upper Confidence Bound to efficiently explore workflow spa
 
 ## 📈 Visualization
 
-Results are available in:
-- `CAGE-Challenge-2-Experiment/plot.ipynb` - CAGE2 convergence plots and tables
-- `Gird-World-Planning-Experiment/notebooks/plot_baseline_vs_gpucb.ipynb` - Gridworld comparison plots
-- `figures/` - Generated PDF/PNG figures
+Results can be visualized using Jupyter notebooks:
+- Check experiment log directories for CSV files with training metrics
+- Use matplotlib/seaborn to plot convergence curves
+- Compare workflow search vs. baseline performance
 
 ## 🧪 Reproducibility
 
 All experiments include:
-- Random seed control for reproducibility
-- Experiment configuration JSON files
+- Random seed control for reproducibility (default seeds specified in scripts)
+- Experiment configuration JSON files saved in log directories
 - CSV training logs with detailed metrics
 - Hyperparameter documentation in README files
 
@@ -194,7 +234,7 @@ If you use this code in your research, please cite:
   title={Workflow Search for Reinforcement Learning},
   author={Guangyu Jiang},
   year={2024},
-  url={https://github.com/yourusername/Workflow-Search-Reinforcement-Learning}
+  url={https://github.com/Guangyu-Jiang/Workflow-Search-Reinforcement-Learning}
 }
 ```
 
@@ -209,10 +249,9 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## 📚 Additional Resources
 
 - **CAGE2 Documentation**: See [CAGE-Challenge-2-Experiment/README.md](CAGE-Challenge-2-Experiment/README.md)
-- **Gridworld Details**: See [Gird-World-Planning-Experiment/environment_description.md](Gird-World-Planning-Experiment/environment_description.md)
-- **Workflow Selection**: See [CAGE-Challenge-2-Experiment/WORKFLOW_SELECTION_EXPLAINED.md](CAGE-Challenge-2-Experiment/WORKFLOW_SELECTION_EXPLAINED.md)
+- **Gridworld Environment**: See [Grid-World-Planning-Experiment/core/obstacle_maze_env.py](Grid-World-Planning-Experiment/core/obstacle_maze_env.py)
+- **Workflow Search Algorithm**: See [CAGE-Challenge-2-Experiment/workflow_rl/gp_ucb_order_search.py](CAGE-Challenge-2-Experiment/workflow_rl/gp_ucb_order_search.py)
 
 ---
 
-**Note**: The Gridworld experiment directory is named `Gird-World-Planning-Experiment` (with a typo) for historical reasons. The code is fully functional regardless of the directory name.
-
+**Repository**: https://github.com/Guangyu-Jiang/Workflow-Search-Reinforcement-Learning

@@ -358,7 +358,7 @@ class HierarchicalOptionsAgent:
 
 
 def train_hierarchical_options(n_workers: int = 50,
-                               total_episodes: int = 100000,
+                               total_episodes: int = 20000,
                                episodes_per_update: int = 50,
                                n_options: int = 8,
                                option_duration: int = 10,
@@ -620,7 +620,7 @@ def main():
     
     parser = argparse.ArgumentParser(description='General Hierarchical RL Baseline')
     parser.add_argument('--n-workers', type=int, default=200)
-    parser.add_argument('--total-episodes', type=int, default=100000)
+    parser.add_argument('--total-episodes', type=int, default=20000)
     parser.add_argument('--episodes-per-update', type=int, default=200)
     parser.add_argument('--n-options', type=int, default=8,
                        help='Number of high-level options (abstract actions)')

@@ -247,7 +247,7 @@ class ParallelSAC:
 
 
 def train_parallel_sac(n_workers: int = 200,
-                      total_episodes: int = 100000,
+                      total_episodes: int = 20000,
                       episodes_per_update: int = 200,
                       batch_size: int = 250,
                       updates_per_step: int = 1,
@@ -466,7 +466,7 @@ def main():
     
     parser = argparse.ArgumentParser(description='Parallel SAC Baseline Training (No Workflow)')
     parser.add_argument('--n-workers', type=int, default=50)
-    parser.add_argument('--total-episodes', type=int, default=100000)
+    parser.add_argument('--total-episodes', type=int, default=20000)
     parser.add_argument('--episodes-per-update', type=int, default=50)
     parser.add_argument('--batch-size', type=int, default=256)
     parser.add_argument('--red-agent', type=str, default='B_lineAgent',

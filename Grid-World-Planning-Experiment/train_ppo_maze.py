@@ -1,12 +1,6 @@
 """
-Multiprocessing PPO baseline on DiagonalCornersEnv using env-only rewards.
-Runs N parallel environments (default 25), 500-step episodes, updates after one
-trajectory from each worker. Logs adherence (first-visit sequence vs [0,1,2,3]).
-
-Logging: creates per-run directory logs/<exp_name>_<YYYYMMDD_HHMMSS>
- - config.json: run configuration
- - updates.csv: per-update metrics
- - summary.json: final summary
+Multiprocessing PPO baseline on ObstacleMazeEnv using env-only rewards.
+Trains to visit 4 checkpoints in canonical order [0,1,2,3].
 """
 
 import argparse
@@ -19,7 +13,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-from core.diagonal_corners_env import DiagonalCornersEnv
+from core.obstacle_maze_env import ObstacleMazeEnv
 import os
 import json
 from datetime import datetime
@@ -68,18 +62,28 @@ class Policy(nn.Module):
         return a, logp, v
 
 
-def worker_episode(worker_id: int, policy_state_dict, max_steps: int, return_queue: mp.Queue):
-    """Run one episode in a separate process using a copy of the policy."""
+def worker_episode(worker_id: int, policy_state_dict, max_steps: int, wall_density: float, seed_base: int, return_queue: mp.Queue):
+    """Run one episode in a separate process."""
     try:
         torch.set_num_threads(1)
-        # Recreate policy on CPU
-        state_dim = 2 + 4 * 2 + 4
+        worker_seed = int(seed_base) + int(worker_id)
+        np.random.seed(worker_seed)
+        torch.manual_seed(worker_seed)
+        state_dim = 2 + 4 * 2 + 4  # agent(2) + checkpoint_centers(8) + visited_flags(4)
         policy = Policy(state_dim)
         policy.load_state_dict(policy_state_dict)
         policy.eval()
 
-        env = DiagonalCornersEnv(max_steps=max_steps)
-        env.reset()
+        env = ObstacleMazeEnv(max_steps=max_steps, wall_density=wall_density)
+        try:
+            env.reset(seed=worker_seed)
+        except TypeError:
+            env.reset()
+        try:
+            env.action_space.seed(worker_seed)
+            env.observation_space.seed(worker_seed)
+        except Exception:
+            pass
         state = env.get_state_for_policy()
 
         traj = {k: [] for k in ["states", "actions", "logps", "rewards", "values", "dones"]}
@@ -97,11 +101,11 @@ def worker_episode(worker_id: int, policy_state_dict, max_steps: int, return_que
             _, r, d, info = env.step(a_int)
             next_state = env.get_state_for_policy()
 
-            # Track first visits
+            # Track first checkpoint entries
             pos = tuple(env.agent_pos)
-            for t_idx, t_pos in enumerate(env.target_positions):
-                if pos == t_pos and t_idx not in visited_sequence:
-                    visited_sequence.append(t_idx)
+            for cp_idx in range(env.num_checkpoints):
+                if env._in_checkpoint(pos, cp_idx) and cp_idx not in visited_sequence:
+                    visited_sequence.append(cp_idx)
 
             traj["states"].append(state)
             traj["actions"].append(a_int)
@@ -191,19 +195,22 @@ def ppo_update(policy: Policy, optimizer, batch, clip=0.2, value_coef=0.5, entro
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--updates', type=int, default=100)
+    parser.add_argument('--updates', type=int, default=800)  # 800 * 25 = 20000 episodes
     parser.add_argument('--num_envs', type=int, default=25)
     parser.add_argument('--max_steps', type=int, default=500)
+    parser.add_argument('--wall_density', type=float, default=0.15)
     parser.add_argument('--lr', type=float, default=3e-4)
     parser.add_argument('--ppo_epochs', type=int, default=4)
     parser.add_argument('--minibatch_size', type=int, default=128)
-    parser.add_argument('--exp_name', type=str, default='ppo_baseline_diagonal_mp')
+    parser.add_argument('--exp_name', type=str, default='ppo_baseline_maze_mp')
+    parser.add_argument('--seed', type=int, default=0)
     args = parser.parse_args()
 
     torch.set_num_threads(1)
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    # Logs
     os.makedirs('logs', exist_ok=True)
     run_dir = os.path.join('logs', f"{args.exp_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
     os.makedirs(run_dir, exist_ok=True)
@@ -212,22 +219,22 @@ def main():
             'updates': args.updates,
             'num_envs': args.num_envs,
             'max_steps': args.max_steps,
+            'wall_density': args.wall_density,
             'lr': args.lr,
             'ppo_epochs': args.ppo_epochs,
             'minibatch_size': args.minibatch_size,
-            'exp_name': args.exp_name
+            'exp_name': args.exp_name,
+            'seed': args.seed
         }, f, indent=2)
     updates_csv = os.path.join(run_dir, 'updates.csv')
     with open(updates_csv, 'w') as f:
         f.write('update,mean_return,mean_adherence,success_rate,policy_loss,value_loss,entropy\n')
 
-    # State dimension: agent(2) + targets(8) + visited_flags(4)
     state_dim = 2 + 4 * 2 + 4
     policy = Policy(state_dim).to(device)
     optimizer = optim.Adam(policy.parameters(), lr=args.lr)
 
     for update in range(args.updates):
-        # Broadcast current policy weights to workers (CPU tensors)
         policy_cpu = Policy(state_dim)
         policy_cpu.load_state_dict({k: v.detach().cpu() for k, v in policy.state_dict().items()})
         policy_state_dict = policy_cpu.state_dict()
@@ -235,12 +242,14 @@ def main():
         return_queue: mp.Queue = mp.Queue()
         workers: List[mp.Process] = []
         for wid in range(args.num_envs):
-            p = mp.Process(target=worker_episode, args=(wid, policy_state_dict, args.max_steps, return_queue))
+            p = mp.Process(
+                target=worker_episode,
+                args=(wid, policy_state_dict, args.max_steps, args.wall_density, args.seed, return_queue)
+            )
             p.daemon = True
             p.start()
             workers.append(p)
 
-        # Collect results
         trajectories: List[Dict] = [None] * args.num_envs
         collected = 0
         while collected < args.num_envs:
@@ -251,12 +260,10 @@ def main():
         for p in workers:
             p.join()
 
-        # Check for errors
         for i, tr in enumerate(trajectories):
             if isinstance(tr, dict) and 'error' in tr:
                 raise RuntimeError(f"Worker {i} failed: {tr['error']}")
 
-        # Flatten and update PPO
         batch = {k: [] for k in ['states', 'actions', 'logps', 'rewards', 'values', 'dones']}
         for tr in trajectories:
             for k in batch.keys():
@@ -265,7 +272,8 @@ def main():
         batch['advantages'] = advantages
         batch['returns'] = returns
 
-        stats = ppo_update(policy, optimizer, batch, clip=0.2, value_coef=0.5, entropy_coef=0.01, epochs=args.ppo_epochs, bs=args.minibatch_size, device=device)
+        stats = ppo_update(policy, optimizer, batch, clip=0.2, value_coef=0.5, entropy_coef=0.01, 
+                          epochs=args.ppo_epochs, bs=args.minibatch_size, device=device)
 
         mean_return = float(np.mean([tr['ep_return'] for tr in trajectories]))
         mean_adherence = float(np.mean([tr['adherence'] for tr in trajectories]))

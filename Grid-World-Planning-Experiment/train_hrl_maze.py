@@ -359,7 +359,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--workflow", type=str, default="0,1,2,3",
                         help="Comma-separated checkpoint order to follow.")
-    parser.add_argument("--updates", type=int, default=2000)
+    parser.add_argument("--updates", type=int, default=800)  # 800 * 25 = 20000 episodes
     parser.add_argument("--num_envs", type=int, default=25)
     parser.add_argument("--max_steps", type=int, default=500)
     parser.add_argument("--option_duration", type=int, default=10)
