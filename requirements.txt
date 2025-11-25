@@ -1,0 +1,30 @@
+# Core dependencies for Workflow Search RL experiments
+
+# Deep Learning
+torch>=2.0.0
+numpy>=1.21.0
+
+# Scientific Computing
+scipy>=1.7.0
+scikit-learn>=1.0.0
+
+# Visualization
+matplotlib>=3.5.0
+seaborn>=0.12.0
+
+# Jupyter
+jupyter>=1.0.0
+ipykernel>=6.0.0
+notebook>=6.4.0
+
+# For Gridworld experiments
+gym>=0.26.0
+pygame>=2.1.0
+
+# Utilities
+pandas>=1.3.0
+tqdm>=4.62.0
+
+# Optional: For advanced parallel processing
+# ray>=2.0.0  # Uncomment if using Ray-based parallel training
+

@@ -1,0 +1,109 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+*.egg-info/
+dist/
+build/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb_checkpoints
+
+# PyTorch
+*.pth
+*.pt
+*.ckpt
+checkpoints/
+*/checkpoints/
+parallel_checkpoints/
+
+# Logs and results
+*.log
+logs/
+results/
+*.json
+!requirements.json
+!experiment_config.json
+!package.json
+
+# Data files
+*.pkl
+*.npy
+*.csv
+!requirements.csv  # Keep example CSV files if needed
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS
+.DS_Store
+Thumbs.db
+*.tmp
+*.bak
+
+# Environment-specific
+nohup.out
+*.out
+*.err
+
+# Large visualization files (keep small examples)
+*.gif
+*.mp4
+*.avi
+
+# Project-specific exclusions
+# CAGE2
+CybORG/CybORG/__pycache__/
+exp_*/
+detailed_episode_log.txt
+optimal_policy_analysis.json
+
+# Gridworld
+gym-maze/
+third_party/
+
+# Test and demo files
+test_*/
+demo_*
+workflow_rl/test_*
+workflow_rl/demo_*
+
+# Temporary directories
+tmp/
+temp/
+scratch/
+
+# Documentation build
+docs/_build/
+docs/_static/
+docs/_templates/
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+
+# Mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# Conda
+.conda/
+

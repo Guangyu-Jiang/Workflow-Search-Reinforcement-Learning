@@ -1,0 +1,60 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# PyTorch
+*.pth
+*.pt
+*.ckpt
+checkpoints/
+*/checkpoints/
+parallel_checkpoints/
+test_*/
+
+# Logs and results
+*.log
+logs/
+results/
+*.json
+!requirements.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific
+workflow_rl/test_*
+workflow_rl/demo_*
+CybORG/CybORG/__pycache__/
+*.pkl
+*.npy
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+
+# Documentation build
+docs/_build/
+docs/_static/
+docs/_templates/
